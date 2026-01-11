@@ -1,45 +1,91 @@
-import { ethers } from "npm:ethers";
-import { provider } from "./provider.ts";
+import { generateStory, generateStoryWithGemini } from "./utils/content-generator.ts";
+import { listAccounts, simulateTransaction } from "./sync.ts";
+import { randomUUID } from "node:crypto";
 
-
-async function listAccounts() {
-  const accounts = await provider.listAccounts();
-  for (const addr of accounts) {
-    const balance = await provider.getBalance(addr);
-    JSON.stringify(addr);
-    console.log(`${JSON.stringify(addr)} : ${ethers.formatEther(balance)} ETH`);
+const writeSubjects = async (subjectsCommaSeparated: string, isLocal=false) => {
+  const subjects = subjectsCommaSeparated.split(",").map(it => it.trim()).filter(it => it.length > 0);
+  if(subjects.length === 0) {
+    console.warn("No subjects specified");
+    return;
   }
+  /**
+   * this operation is too heavy
+   */
+  if(isLocal) {
+    await Promise.all(subjects.map(it => generateStory(it)));
+    return;
+  }
+  await Promise.all(subjects.map(it => generateStoryWithGemini(it)));
 }
 
-// send money from one account to another
-const simulateTransaction = async () => {
-  const message = ethers.hexlify(ethers.toUtf8Bytes("Hello Ganache!"));
-  const from = "0x9F85c703ADee4f0F19c1e3FcDCb80c52D7340718";
-  const to = "0x397CC9957e139B19ed3A228BBCD4aDc425C6218C";
-  const data = message;
-
-  const gasLimit = await provider.estimateGas({ from, to, value: 0, data });
-
-  // This is a simulation function. Actual implementation would require private keys and signing.
-  const transaction = await provider.send("eth_sendTransaction", [
-    {
-      from: from,
-      to: to,
-      value: "0x0",
-      gas: ethers.toBeHex(gasLimit),
-      gasPrice: "0x3B9ACA00", 
-      data: message,
-    },
-
-  ]);
-  console.log(transaction);
-}
-provider
-
-
-
-// Learn more at https://docs.deno.com/runtime/manual/examples/module_metadata#concepts
 if (import.meta.main) {
-  await listAccounts();
-  await simulateTransaction();
+  // await listAccounts();
+  const args = Deno.args;
+  const message = `
+    Usage: script sync|write
+    Usage: script sync : submit the content in the blockchain network
+    Usage: script write [--local | -l] 'sub1, sub2, sub3 ...' 
+    --local, -l : Write the subjects using local LLM
+    sub : Article around a subject, like 'Tunisia, 'Cristiano Renaldo', ...
+    **Note:** subjects qutted 
+    `;
+  if(args.length === 0)  {
+    console.log(message);
+    Deno.exit(1);
+  }
+  const command = args.shift();
+  if (command == undefined) {
+    console.error("Commend not specified");
+    Deno.exit(-1);
+  }
+  if(!["write", "sync"].includes(command)) {
+    console.error("Commend not supported");
+    Deno.exit(-1);
+  }
+  const commanDataIndicator = `data-${randomUUID()}.txt`;
+  if(command == 'sync') {
+    // sync with the blockchain
+    await listAccounts();
+    console.log("Synching with the blockchain");
+    const listOfContentFiles = Deno.readDir("./data");
+    const filesContainContent: string[] = [];
+    for await (const filePathObject of listOfContentFiles) {
+      if(filePathObject.isFile) {
+        filesContainContent.push(`./data/${filePathObject.name}`);
+      }
+    }
+    let allContent = '';
+    const textEncoder = new TextDecoder();
+    for (const fileName of filesContainContent) {
+      const indicator = `file: ${commanDataIndicator} ___\n`
+      const storyName = "Story: " + fileName.split("/").at(-1)?.split(".").at(0) + "\r\n\r\n";
+      const content = await Deno.readFile(fileName);
+      const allStory = indicator + storyName + textEncoder.decode(content);
+      allContent += allStory;
+      // permission dependent
+      await (new Deno.Command("mv", {
+        args: [fileName, "./archive/" + (fileName.match(/data\/([\w\.]+)/)?.at(1) ?? randomUUID()+'.data')]
+      })).output();
+    }
+    simulateTransaction(allContent);
+  }else {
+  const isLocal = args.includes("--local") || args.includes("-l");
+  if(isLocal) {
+    const subjects = args.at(1);
+    console.log(subjects);
+    if(!subjects) {
+      console.log(message);
+      Deno.exit(-1);
+    }
+    await writeSubjects(subjects, true);
+  }else {
+    const subjects = args.at(0);
+    if (!subjects) {
+      console.log(message);
+      Deno.exit(-1);
+    }
+    writeSubjects(subjects);
+  }
+  }
+  
 }
