@@ -1,217 +1,111 @@
-<h1 align="center">URLFinder</h1>
 
-<p align="center">
-A high-speed tool for passively gathering URLs, optimized for efficient web asset discovery without active scanning.
-</p>
+# Ethereum Content Archiver
 
-<p align="center">
-<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-red.svg"></a>
-<a href="https://goreportcard.com/badge/github.com/projectdiscovery/urlfinder"><img src="https://goreportcard.com/badge/github.com/projectdiscovery/urlfinder"></a>
-<a href="https://pkg.go.dev/github.com/projectdiscovery/urlfinder/pkg/urlfinder"><img src="https://img.shields.io/badge/go-reference-blue"></a>
-<a href="https://github.com/projectdiscovery/urlfinder/releases"><img src="https://img.shields.io/github/release/projectdiscovery/urlfinder"></a>
-<a href="https://twitter.com/pdiscoveryio"><img src="https://img.shields.io/twitter/follow/pdiscoveryio.svg?logo=twitter"></a>
-<a href="https://discord.gg/projectdiscovery"><img src="https://img.shields.io/discord/695645237418131507.svg?logo=discord"></a>
-</p>
+This project is a command-line tool for generating content using Large Language Models (LLMs), publishing it to an Ethereum-compatible blockchain, and archiving it to a Hadoop HDFS cluster.
 
-<p align="center">
-  <a href="#features">Features</a> •
-  <a href="#installation">Installation</a> •
-  <a href="#usage">Usage</a> •
-  <a href="#examples">Examples</a> •
-  <a href="https://discord.gg/projectdiscovery">Join Discord</a>
-</p>
+## Project Overview
 
----
+The system is composed of three main parts:
 
-## Overview
-
-URLFinder is a high-speed, passive URL discovery tool designed to simplify and accelerate web asset discovery, ideal for penetration testers, security researchers, and developers looking to gather URLs without active scanning.
-
-<h1 align="center">
-  <img src="https://github.com/user-attachments/assets/dcd6522c-fe5f-4362-8d08-a2faeef9f725" alt="httpx" width="700px">
-  <br>
-</h1>
+1.  **Content Generator**: A CLI command to generate articles on specified subjects using either a local or a remote LLM (Gemini). The generated content is stored locally in the `data/` directory.
+2.  **Blockchain Synchronizer**: A CLI command that reads the generated content from the `data/` directory, bundles it, and sends it as a transaction to an Ethereum network. This serves as a proof-of-publication.
+3.  **HDFS Archiver**: A background listener that watches the blockchain for new blocks. When it finds a transaction containing content from this tool, it extracts the data and archives it permanently in a Hadoop HDFS cluster.
 
 ## Features
 
-- **Curated Passive Sources** to maximize comprehensive URL discovery
-- Supports multiple output formats (JSON, file, stdout)
-- **Optimized for Speed** and resource efficiency
-- **STDIN/OUT** support for easy integration into existing workflows
+-   Content generation via LLMs (local or Gemini).
+-   Publishing content to an Ethereum blockchain.
+-   Archiving content to HDFS.
+-   Uses [Deno](https://deno.land/) for the runtime environment.
+-   Includes a Docker Compose setup for running local Ethereum (Ganache) and Hadoop clusters.
 
-## Installation
+## Prerequisites
 
-URLFinder requires **Go 1.21**. Install it using the following command or download a pre-compiled binary from the [releases page](https://github.com/projectdiscovery/urlfinder/releases).
+-   [Deno](https://deno.land/manual/getting_started/installation) (version 1.30 or higher)
+-   [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
+-   Hadoop client installed and configured on the host machine (if not using the provided Docker setup).
 
-```sh
-go install -v github.com/projectdiscovery/urlfinder/cmd/urlfinder@latest
-````
+## Getting Started
 
-# Usage
+### 1. Clone the Repository
 
-```sh
-urlfinder -h
+```bash
+git clone https://github.com/your-username/eth-network.git
+cd eth-network
 ```
 
-This command displays help for URLFinder. Below are some common switches and options.
+### 2. Start the Services
 
-```yaml
-A streamlined tool for discovering associated URLs.
+The project includes a `docker-compose.yaml` file to run the necessary services (Hadoop and Ganache).
 
-Usage:
-  ./urlfinder [flags]
-
-Flags:
-INPUT:
-   -d, -list string[]  target domain or list of domains
-
-SOURCE:
-   -s, -sources string[]           specific sources for discovery (e.g., -s alienvault,commoncrawl)
-   -es, -exclude-sources string[]   sources to exclude (e.g., -es alienvault,commoncrawl)
-   -all                             use all sources (may be slower)
-SCOPE:
-   -us, -url-scope string[]       in scope url regex to be followed by urlfinder
-   -uos, -url-out-scope string[]  out of scope url regex to be excluded by urlfinder
-   -fs, -field-scope string       pre-defined scope field (dn,rdn,fqdn) or custom regex (e.g., '(company-staging.io|company.com)') (default "rdn")
-   -ns, -no-scope                 disables host based default scope
-   -do, -display-out-scope        display external endpoint from scoped crawling
-
-FILTER:
-   -m, -match string[]       URLs or list to match (file or comma-separated)
-   -f, -filter string[]      URLs or list to filter (file or comma-separated)
-
-RATE-LIMIT:
-   -rl, -rate-limit int      max HTTP requests per second (global)
-   -rls, -rate-limits value  per-provider HTTP request limits (e.g., -rls waybackarchive=15/m)
-
-UPDATE:
-   -up, -update              update URLFinder to the latest version
-   -duc, -disable-update-check  disable automatic update checks
-
-OUTPUT:
-   -o, -output string       specify output file
-   -j, -jsonl               JSONL output format
-   -od, -output-dir string  specify output directory
-   -cs, -collect-sources    include all sources in JSON output
-
-CONFIGURATION:
-   -config string           config file (default "$CONFIG/urlfinder/config.yaml")
-   -pc, -provider-config string  provider config file (default "$CONFIG/urlfinder/provider-config.yaml")
-   -proxy string            HTTP proxy
-
-DEBUG:
-   -silent                  show only URLs in output
-   -version                 display URLFinder version
-   -v                       verbose output
-   -nc, -no-color           disable colored output
-   -ls, -list-sources       list all available sources
-   -stats                   display source statistics
-
-OPTIMIZATION:
-   -timeout int   timeout in seconds (default 30)
-   -max-time int  max time in minutes for enumeration (default 10)
+```bash
+docker-compose up -d
 ```
 
-## Examples
+This will start:
+- A Hadoop cluster with a NameNode and DataNode.
+- A local Ethereum blockchain instance using Ganache.
 
-### Basic Usage
+### 3. Run the Application
 
-```console
-urlfinder -d tesla.com
+The main application has two primary modes: `write` to generate content and `sync` to publish it. The `listener.ts` script runs separately to handle archiving.
+
+It's recommended to run the listener in a separate terminal to continuously monitor the blockchain.
+
+**Terminal 1: Run the Blockchain Listener**
+
+```bash
+deno run -A listener.ts
 ```
 
-This command enumerates URLs for the target domain tesla.com.
+**Terminal 2: Use the CLI**
 
-Example run:
+**To generate content:**
 
-```console
-$ urlfinder -d tesla.com
+Provide a comma-separated list of subjects. By default, this uses a remote LLM (Gemini).
 
-  __  _____  __   _____         __       
- / / / / _ \/ /  / __(_)__  ___/ /__ ____
-/ /_/ / , _/ /__/ _// / _ \/ _  / -_) __/
-\____/_/|_/____/_/ /_/_//_/\_,_/\__/_/    										
-
-		projectdiscovery.io
-
-[INF] Current urlfinder version v0.0.1 (latest)
-[INF] Enumerating urls for tesla.com
-https://www.tesla.com/akam/13/7e68a6e8
-https://www.tesla.com/akam/13/pixel_4e07b670
-https://www.tesla.com/da_dk/en/node/30788?redirect=no
-https://www.tesla.com/de_at/findus/location/charger/dc6290
-https://www.tesla.com/akam/13/7ade0a44
-https://www.tesla.com/cs_cz/referral/teslaapp23713?redirect=no
-https://www.tesla.com/da_dk/findus/location/charger/dc253
-https://www.tesla.com/akam/13/pixel_76102729
-https://www.tesla.com/da_dk/blog/modules//system/system.messages.js
-...
-[INF] Found 202435 urls for tesla.com in 2 minutes 37 seconds
+```bash
+deno run -A main.ts write "The history of AI, The future of space exploration"
 ```
 
-### Filtering Options
+To use a local LLM, add the `--local` flag:
 
-Use the `-m` (match) and `-f` (filter) options to refine results based on URL patterns.
-
-#### Examples
-
-1. **Include URLs Matching Specific Patterns**
-
-   To include only URLs containing "shop" or "model":
-
-   ```sh
-   urlfinder -d tesla.com -m shop,model
-   ```
-
-2. **Exclude URLs Matching Specific Patterns**
-
-   To exclude URLs containing "privacy" or "terms":
-
-   ```sh
-   urlfinder -d tesla.com -f privacy,terms
-   ```
-
-3. **Combined Match and Filter**
-
-   To find URLs containing "support" but exclude those with "faq":
-
-   ```sh
-   urlfinder -d tesla.com -m support -f faq
-   ```
-
-#### Using Files for Matching and Filtering
-
-Provide patterns in files:
-
-```sh
-urlfinder -d tesla.com -m include-patterns.txt -f exclude-patterns.txt
+```bash
+deno run -A main.ts write --local "Quantum Computing"
 ```
 
-### JSONL Output Example
+This will create files in the `./data/` directory.
 
-Use the `-j` or `--jsonl` flag to output results in JSONL (JSON Lines) format, where each line is a separate JSON object. This format is useful for processing large outputs in a structured way.
+**To sync content to the blockchain:**
 
-#### Command Example
-
-```sh
-urlfinder -d tesla.com -j
+```bash
+deno run -A main.ts sync
 ```
 
-#### Example JSONL Output
+This will read all files from `./data/`, send their content in a single transaction, and then move the local files to the `./archive/` directory. The listener in Terminal 1 should detect this transaction and save the content to HDFS.
 
-```json
-{"url":"https://shop.tesla.com/product/model-s-plaid","input":"tesla.com","source":"waybackarchive"}
-{"url":"https://www.tesla.com/inventory/used/ms","input":"tesla.com","source":"waybackarchive"}
-{"url":"https://forums.tesla.com/discussion/101112/model-3-updates","input":"tesla.com","source":"waybackarchive"}
+## Project Structure
+
+```
+.
+├── docker-compose.yaml     # Defines the Hadoop and Ganache services
+├── main.ts                 # Main CLI entry point (write and sync commands)
+├── listener.ts             # Listens to the blockchain and archives to HDFS
+├── sync.ts                 # Handles sending transactions to the Ethereum network
+├── utils/
+│   ├── content-generator.ts# Logic for generating content with LLMs
+│   └── hdfs-client.ts      # Wrapper for the HDFS command-line client
+├── data/                   # Staging directory for newly generated content
+├── archive/                # Local archive for files after they are synced
+├── deno.json               # Deno configuration file
+├── deno.lock               # Deno lock file
+└── ...
 ```
 
-Each JSON object contains:
-- `url`: The discovered URL.
-- `input`: The target domain (e.g., `tesla.com`).
-- `source`: The data source for the URL discovery (e.g., `waybackarchive`).
+## How It Works
 
---------
-
-<div align="center">
-  URLFinder is made with ❤️ by the <a href="https://projectdiscovery.io">ProjectDiscovery</a> team and distributed under the <a href="LICENSE.md">MIT License</a>.
-</div>
+1.  `deno run -A main.ts write "subject"` calls the `generateStory` or `generateStoryWithGemini` function to create a text file in `./data`.
+2.  `deno run -A main.ts sync` reads files from `./data`, bundles them, and uses the `ethers` library to call `simulateTransaction`. This sends the bundled content in the `data` field of a transaction to the Ganache network.
+3.  The `listener.ts` script, which is connected to the Ganache provider, detects the new transaction in a block.
+4.  It decodes the transaction data to retrieve the original content.
+5.  It then calls `sendfileHdfs`, which uses a `Deno.Command` to execute `hdfs dfs -put`, writing the content into the HDFS cluster.
