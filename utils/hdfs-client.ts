@@ -40,7 +40,6 @@ export async function sendfileHdfs_(createFileHdfs: CreateFileHdfs): Promise<str
 export async function sendfileHdfs(
   createFileHdfs: CreateFileHdfs
 ): Promise<string> {
-
     await Deno.writeFile("./tmp/data.txt", (new TextEncoder()).encode(createFileHdfs.content));
     const command = new Deno.Command("hdfs", {
         args: [
@@ -53,7 +52,6 @@ export async function sendfileHdfs(
         stderr: "piped"
     });
   const process = command.spawn()
-  await Deno.remove("./tmp/data.txt");
   const { code, stdout, stderr } = await process.output()
   if (code !== 0) {
     console.error(new TextDecoder().decode(stderr))

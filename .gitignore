@@ -1,2 +1,4 @@
 .env
 ooxwv-docker_hadoop/
+data/
+archive/
